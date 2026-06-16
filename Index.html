@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kalkulator Kurs 4 Mata Uang - Auto Update</title>
+    <title>Multi-Input Currency Monitor</title>
     <style>
         * {
             margin: 0;
@@ -147,7 +147,7 @@
 
     <div class="container">
         <h1>Multi-Input Currency Monitor</h1>
-        <p class="subtitle">Ketik nominal di kolom mana saja. Kurs otomatis terupdate dari server tiap 60 detik.</p>
+        <p class="subtitle">Ketik nominal di kolom mana saja. Mendukung HTTPS & Siap dipasang di Vercel.</p>
         
         <div id="main-content">
             <p class="loading-screen">Menghubungkan ke live rate server...</p>
@@ -155,14 +155,16 @@
 
         <div class="footer-status">
             <span id="update-time">Sinkronisasi data...</span>
-            <span id="sync-status" style="color: #2ecc71; font-weight: bold;">● Fitur Auto-Update Aktif</span>
+            <span id="sync-status" style="color: #2ecc71; font-weight: bold;">● Live Vercel-Ready</span>
         </div>
     </div>
 
     <script>
+        // Menggunakan API HTTPS gratis yang diperbarui berkala (Sangat cocok untuk Vercel)
         const apiURL = "https://open.er-api.com/v6/latest/USD";
+        
         let usdRates = {}; 
-        let currentFocusCode = null; // Menyimpan info kolom mana yang sedang diketik user
+        let currentFocusCode = null; 
 
         const currencies = [
             { code: "IDR", name: "Indonesian Rupiah", flag: "🇮🇩", symbol: "Rp" },
@@ -171,7 +173,6 @@
             { code: "THB", name: "Thai Baht", flag: "🇹🇭", symbol: "฿" }
         ];
 
-        // Nilai awal saat pertama dibuka
         let lastInputAmount = 1000000;
         let lastSourceCurrency = "IDR";
 
@@ -183,22 +184,19 @@
                 
                 usdRates = data.rates; 
                 
-                // Jika ini loading pertama kali, gambar dashboard-nya
                 if (!isSilentUpdate) {
                     renderDashboard();
                 }
                 
-                // Update nilai di layar berdasarkan data kurs terbaru
                 updateAllInputs(lastInputAmount, lastSourceCurrency);
 
-                // Update teks info waktu di bagian bawah
                 const updateTimeText = new Date(data.time_last_update_utc).toLocaleString('id-ID', { timeZoneName: 'short' });
-                document.getElementById("update-time").innerText = "Terakhir Sinkron Server: " + updateTimeText;
+                document.getElementById("update-time").innerText = "Terakhir Sinkron Pasar: " + updateTimeText;
 
             } catch (error) {
-                console.error("Gagal memperbarui kurs otomatis:", error);
+                console.error(error);
                 if (!isSilentUpdate) {
-                    document.getElementById("main-content").innerHTML = "<p style='color:red; text-align:center;'>Gagal memuat kurs. Periksa koneksi internet Anda.</p>";
+                    document.getElementById("main-content").innerHTML = `<p style='color:red; text-align:center;'>Gagal memuat kurs. Silakan coba beberapa saat lagi.</p>`;
                 }
             }
         }
@@ -231,11 +229,9 @@
 
             contentDiv.appendChild(listContainer);
 
-            // Pasang event listener
             currencies.forEach(curr => {
                 const inputEl = document.getElementById(`input-${curr.code}`);
                 
-                // Saat user mulai mengetik, catat kolom apa yang sedang aktif
                 inputEl.addEventListener("focus", function() {
                     currentFocusCode = curr.code;
                 });
@@ -244,7 +240,6 @@
                     let amount = parseFloat(this.value);
                     if (isNaN(amount) || amount < 0) amount = 0;
                     
-                    // Simpan status input terakhir agar saat auto-refresh angkanya tetap konsisten
                     lastInputAmount = amount;
                     lastSourceCurrency = curr.code;
                     
@@ -257,7 +252,6 @@
             let amountInUSD = inputAmount / usdRates[sourceCurrencyCode];
 
             currencies.forEach(curr => {
-                // JANGAN menimpa kolom yang sedang diisi atau sedang di-focus oleh user agar ketikan tidak meloncat/rusak
                 if (curr.code !== currentFocusCode) {
                     const targetInput = document.getElementById(`input-${curr.code}`);
                     if (targetInput) {
@@ -274,12 +268,10 @@
             });
         }
 
-        // Jalankan saat pertama kali halaman dibuka
         fetchRatesFromServer();
 
-        // FITUR OTOMATIS: Melakukan penembakan API setiap 60.000 milidetik (1 Menit) tanpa mengganggu ketikan user
+        // Auto update tiap 1 menit
         setInterval(() => {
-            // Parameter 'true' menandakan silent update (hanya memperbarui angka background rate)
             fetchRatesFromServer(true);
         }, 60000); 
     </script>
