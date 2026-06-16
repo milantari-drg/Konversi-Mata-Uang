@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator Kurs 4 Mata Uang - Auto Update</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f0f4f8;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: #ffffff;
+            padding: 35px;
+            border-radius: 16px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.08);
+            max-width: 650px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #1a252f;
+            text-align: center;
+            margin-bottom: 5px;
+            font-size: 26px;
+        }
+
+        p.subtitle {
+            color: #7f8c8d;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .currency-list {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .currency-row {
+            display: flex;
+            align-items: center;
+            background: #ffffff;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 12px 20px;
+            transition: all 0.2s ease;
+        }
+
+        .currency-row:focus-within {
+            border-color: #3498db;
+            box-shadow: 0 0 10px rgba(52, 152, 219, 0.15);
+            background: #fcfdfe;
+        }
+
+        .currency-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 180px;
+            flex-shrink: 0;
+        }
+
+        .flag {
+            font-size: 28px;
+        }
+
+        .code {
+            font-weight: bold;
+            font-size: 16px;
+            color: #2c3e50;
+        }
+
+        .name {
+            font-size: 11px;
+            color: #94a3b8;
+            display: block;
+        }
+
+        .input-area {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            justify-content: flex-end;
+        }
+
+        .symbol {
+            font-size: 18px;
+            font-weight: 600;
+            color: #64748b;
+            margin-right: 8px;
+        }
+
+        .currency-input {
+            width: 100%;
+            border: none;
+            outline: none;
+            font-size: 20px;
+            font-weight: bold;
+            color: #1e293b;
+            text-align: right;
+            background: transparent;
+        }
+
+        .currency-input::-webkit-outer-spin-button,
+        .currency-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .currency-input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        .footer-status {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            font-size: 11px;
+            color: #94a3b8;
+            padding: 0 5px;
+        }
+
+        .loading-screen {
+            text-align: center;
+            font-size: 16px;
+            color: #3498db;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Multi-Input Currency Monitor</h1>
+        <p class="subtitle">Ketik nominal di kolom mana saja. Kurs otomatis terupdate dari server tiap 60 detik.</p>
+        
+        <div id="main-content">
+            <p class="loading-screen">Menghubungkan ke live rate server...</p>
+        </div>
+
+        <div class="footer-status">
+            <span id="update-time">Sinkronisasi data...</span>
+            <span id="sync-status" style="color: #2ecc71; font-weight: bold;">● Fitur Auto-Update Aktif</span>
+        </div>
+    </div>
+
+    <script>
+        const apiURL = "https://open.er-api.com/v6/latest/USD";
+        let usdRates = {}; 
+        let currentFocusCode = null; // Menyimpan info kolom mana yang sedang diketik user
+
+        const currencies = [
+            { code: "IDR", name: "Indonesian Rupiah", flag: "🇮🇩", symbol: "Rp" },
+            { code: "USD", name: "US Dollar", flag: "🇺🇸", symbol: "$" },
+            { code: "CNY", name: "Chinese Yuan", flag: "🇨🇳", symbol: "¥" },
+            { code: "THB", name: "Thai Baht", flag: "🇹🇭", symbol: "฿" }
+        ];
+
+        // Nilai awal saat pertama dibuka
+        let lastInputAmount = 1000000;
+        let lastSourceCurrency = "IDR";
+
+        async function fetchRatesFromServer(isSilentUpdate = false) {
+            try {
+                const response = await fetch(apiURL);
+                if (!response.ok) throw new Error();
+                const data = await response.json();
+                
+                usdRates = data.rates; 
+                
+                // Jika ini loading pertama kali, gambar dashboard-nya
+                if (!isSilentUpdate) {
+                    renderDashboard();
+                }
+                
+                // Update nilai di layar berdasarkan data kurs terbaru
+                updateAllInputs(lastInputAmount, lastSourceCurrency);
+
+                // Update teks info waktu di bagian bawah
+                const updateTimeText = new Date(data.time_last_update_utc).toLocaleString('id-ID', { timeZoneName: 'short' });
+                document.getElementById("update-time").innerText = "Terakhir Sinkron Server: " + updateTimeText;
+
+            } catch (error) {
+                console.error("Gagal memperbarui kurs otomatis:", error);
+                if (!isSilentUpdate) {
+                    document.getElementById("main-content").innerHTML = "<p style='color:red; text-align:center;'>Gagal memuat kurs. Periksa koneksi internet Anda.</p>";
+                }
+            }
+        }
+
+        function renderDashboard() {
+            const contentDiv = document.getElementById("main-content");
+            contentDiv.innerHTML = ""; 
+
+            const listContainer = document.createElement("div");
+            listContainer.className = "currency-list";
+
+            currencies.forEach(curr => {
+                const row = document.createElement("div");
+                row.className = "currency-row";
+                row.innerHTML = `
+                    <div class="currency-label">
+                        <span class="flag">${curr.flag}</span>
+                        <div>
+                            <span class="code">${curr.code}</span>
+                            <span class="name">${curr.name}</span>
+                        </div>
+                    </div>
+                    <div class="input-area">
+                        <span class="symbol">${curr.symbol}</span>
+                        <input type="number" class="currency-input" id="input-${curr.code}" data-code="${curr.code}" placeholder="0">
+                    </div>
+                `;
+                listContainer.appendChild(row);
+            });
+
+            contentDiv.appendChild(listContainer);
+
+            // Pasang event listener
+            currencies.forEach(curr => {
+                const inputEl = document.getElementById(`input-${curr.code}`);
+                
+                // Saat user mulai mengetik, catat kolom apa yang sedang aktif
+                inputEl.addEventListener("focus", function() {
+                    currentFocusCode = curr.code;
+                });
+
+                inputEl.addEventListener("input", function() {
+                    let amount = parseFloat(this.value);
+                    if (isNaN(amount) || amount < 0) amount = 0;
+                    
+                    // Simpan status input terakhir agar saat auto-refresh angkanya tetap konsisten
+                    lastInputAmount = amount;
+                    lastSourceCurrency = curr.code;
+                    
+                    updateAllInputs(amount, curr.code);
+                });
+            });
+        }
+
+        function updateAllInputs(inputAmount, sourceCurrencyCode) {
+            let amountInUSD = inputAmount / usdRates[sourceCurrencyCode];
+
+            currencies.forEach(curr => {
+                // JANGAN menimpa kolom yang sedang diisi atau sedang di-focus oleh user agar ketikan tidak meloncat/rusak
+                if (curr.code !== currentFocusCode) {
+                    const targetInput = document.getElementById(`input-${curr.code}`);
+                    if (targetInput) {
+                        let targetValue = amountInUSD * usdRates[curr.code];
+                        let decimalPlaces = (curr.code === "IDR") ? 0 : 2;
+                        
+                        if (targetValue === 0) {
+                            targetInput.value = "";
+                        } else {
+                            targetInput.value = targetValue.toFixed(decimalPlaces);
+                        }
+                    }
+                }
+            });
+        }
+
+        // Jalankan saat pertama kali halaman dibuka
+        fetchRatesFromServer();
+
+        // FITUR OTOMATIS: Melakukan penembakan API setiap 60.000 milidetik (1 Menit) tanpa mengganggu ketikan user
+        setInterval(() => {
+            // Parameter 'true' menandakan silent update (hanya memperbarui angka background rate)
+            fetchRatesFromServer(true);
+        }, 60000); 
+    </script>
+</body>
+</html>
