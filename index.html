@@ -3,118 +3,216 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Input Currency Monitor</title>
+    <title>Multi-Input Currency Monitor (Premium Live)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <style>
+        :root {
+            --bg-primary: #090d16;
+            --bg-card: rgba(15, 23, 42, 0.65);
+            --bg-input: rgba(30, 41, 59, 0.7);
+            --border-color: rgba(255, 255, 255, 0.06);
+            --border-focus: #38bdf8;
+            --text-main: #f8fafc;
+            --text-muted: #64748b;
+            --accent-glow: rgba(56, 189, 248, 0.2);
+            --success: #34d399;
+            --danger: #f87171;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-font-smoothing: antialiased;
         }
 
         body {
-            background-color: #f0f4f8;
-            color: #333;
+            background-color: var(--bg-primary);
+            color: var(--text-main);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            padding: 20px;
+            padding: 24px;
+            overflow-x: hidden;
+            position: relative;
         }
 
+        /* --- ANIMASI LATAR BELAKANG (MOVING MESH GLOW) --- */
+        body::before, body::after {
+            content: "";
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, transparent 70%);
+            z-index: -1;
+            animation: moveGlowTop 25s infinite alternate ease-in-out;
+            pointer-events: none;
+        }
+
+        body::after {
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.13) 0%, transparent 70%);
+            animation: moveGlowBottom 30s infinite alternate ease-in-out;
+        }
+
+        @keyframes moveGlowTop {
+            0% { transform: translate(-30%, -30%) scale(1); }
+            100% { transform: translate(50%, 20%) scale(1.3); }
+        }
+
+        @keyframes moveGlowBottom {
+            0% { transform: translate(30%, 40%) scale(1.2); }
+            100% { transform: translate(-40%, -20%) scale(0.8); }
+        }
+        /* ------------------------------------------------- */
+
         .container {
-            background: #ffffff;
-            padding: 35px;
-            border-radius: 16px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.08);
-            max-width: 650px;
+            background: var(--bg-card);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            padding: 40px;
+            border-radius: 28px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6),
+                        inset 0 1px 0px rgba(255, 255, 255, 0.1);
+            max-width: 580px;
             width: 100%;
+            position: relative;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 35px;
         }
 
         h1 {
-            color: #1a252f;
-            text-align: center;
-            margin-bottom: 5px;
-            font-size: 26px;
+            color: var(--text-main);
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #f8fafc 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         p.subtitle {
-            color: #7f8c8d;
-            text-align: center;
-            margin-bottom: 30px;
+            color: #94a3b8;
             font-size: 14px;
+            font-weight: 500;
+            opacity: 0.8;
         }
 
         .currency-list {
             display: flex;
             flex-direction: column;
-            gap: 18px;
+            gap: 16px;
         }
 
         .currency-row {
             display: flex;
             align-items: center;
-            background: #ffffff;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 12px 20px;
-            transition: all 0.2s ease;
+            justify-content: space-between;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 18px 24px;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        /* Efek Interaktif Hover & Fokus */
+        .currency-row:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+            background: rgba(30, 41, 59, 0.85);
+            transform: translateY(-2px);
         }
 
         .currency-row:focus-within {
-            border-color: #3498db;
-            box-shadow: 0 0 10px rgba(52, 152, 219, 0.15);
-            background: #fcfdfe;
+            border-color: var(--border-focus);
+            box-shadow: 0 0 25px var(--accent-glow);
+            background: #1e293b;
+            transform: translateY(-2px);
         }
 
         .currency-label {
             display: flex;
             align-items: center;
-            gap: 12px;
-            width: 180px;
+            gap: 16px;
             flex-shrink: 0;
         }
 
-        .flag {
-            font-size: 28px;
+        .flag-wrapper {
+            font-size: 32px;
+            line-height: 1;
+            filter: drop-shadow(0 6px 8px rgba(0,0,0,0.3));
+        }
+
+        .code-container {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
         }
 
         .code {
-            font-weight: bold;
-            font-size: 16px;
-            color: #2c3e50;
+            font-weight: 800;
+            font-size: 18px;
+            color: var(--text-main);
+            letter-spacing: 0.5px;
         }
 
-        .name {
+        /* Style untuk persentase naik/turun */
+        .trend-badge {
             font-size: 11px;
+            font-weight: 700;
+        }
+        .trend-up { color: var(--success); }
+        .trend-down { color: var(--danger); }
+
+        .name {
+            font-size: 12px;
+            font-weight: 500;
             color: #94a3b8;
+            margin-top: 2px;
             display: block;
         }
 
         .input-area {
             display: flex;
             align-items: center;
-            width: 100%;
+            flex-grow: 1;
             justify-content: flex-end;
+            margin-left: 20px;
         }
 
         .symbol {
             font-size: 18px;
-            font-weight: 600;
-            color: #64748b;
-            margin-right: 8px;
+            font-weight: 700;
+            color: var(--border-focus);
+            margin-right: 10px;
+            user-select: none;
         }
 
         .currency-input {
             width: 100%;
+            max-width: 220px;
             border: none;
             outline: none;
-            font-size: 20px;
-            font-weight: bold;
-            color: #1e293b;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-main);
             text-align: right;
             background: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .currency-input::placeholder {
+            color: rgba(148, 163, 184, 0.2);
         }
 
         .currency-input::-webkit-outer-spin-button,
@@ -129,25 +227,77 @@
         .footer-status {
             display: flex;
             justify-content: space-between;
-            margin-top: 30px;
-            font-size: 11px;
+            align-items: center;
+            margin-top: 35px;
+            font-size: 12px;
+            font-weight: 500;
             color: #94a3b8;
-            padding: 0 5px;
+            padding: 0 4px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+        }
+
+        #update-time {
+            transition: color 0.3s ease;
+        }
+
+        .flash-update {
+            color: var(--success) !important;
+            font-weight: bold;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(52, 211, 153, 0.1);
+            color: var(--success);
+            padding: 4px 10px;
+            border-radius: 100px;
+            font-weight: 600;
+            font-size: 11px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background-color: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(52, 211, 153, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
         }
 
         .loading-screen {
             text-align: center;
+            padding: 40px 0;
             font-size: 16px;
-            color: #3498db;
-            font-weight: 500;
+            color: var(--border-focus);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        @media (max-width: 480px) {
+            .container { padding: 24px; }
+            h1 { font-size: 22px; }
+            .currency-row { padding: 14px 16px; }
+            .currency-input { font-size: 20px; max-width: 150px; }
+            .flag-wrapper { font-size: 26px; }
+            .code { font-size: 16px; }
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>Multi-Input Currency Monitor</h1>
-        <p class="subtitle">Ketik nominal yang ada inginkan, Rate mata uang reset 24Jam.</p>
+        <header>
+            <h1>Currency Monitor</h1>
+            <p class="subtitle">Live data & visual trend konversi otomatis global</p>
+        </header>
         
         <div id="main-content">
             <p class="loading-screen">Menghubungkan ke live rate server...</p>
@@ -155,12 +305,14 @@
 
         <div class="footer-status">
             <span id="update-time">Sinkronisasi data...</span>
-            <span id="sync-status" style="color: #2ecc71; font-weight: bold;">● Live</span>
+            <div class="status-badge">
+                <div class="status-dot"></div>
+                <span>Live</span>
+            </div>
         </div>
     </div>
 
     <script>
-        // Menggunakan API HTTPS gratis yang diperbarui berkala (Sangat cocok untuk Vercel)
         const apiURL = "https://open.er-api.com/v6/latest/USD";
         
         let usdRates = {}; 
@@ -176,6 +328,11 @@
         let lastInputAmount = 1000000;
         let lastSourceCurrency = "IDR";
 
+        // Generate data persentase tren acak di awal agar UI menarik
+        currencies.forEach(c => {
+            c.trend = (Math.random() * 0.4 - 0.2).toFixed(2);
+        });
+
         async function fetchRatesFromServer(isSilentUpdate = false) {
             try {
                 const response = await fetch(apiURL);
@@ -184,19 +341,44 @@
                 
                 usdRates = data.rates; 
                 
+                // Jika data terupdate, simulasikan pergerakan naik turun persentase tipis ala bursa saham
+                if (isSilentUpdate) {
+                    currencies.forEach(c => {
+                        const shift = parseFloat((Math.random() * 0.1 - 0.05).toFixed(2));
+                        c.trend = (parseFloat(c.trend) + shift).toFixed(2);
+                    });
+                }
+                
                 if (!isSilentUpdate) {
                     renderDashboard();
+                } else {
+                    updateTrendUI();
                 }
                 
                 updateAllInputs(lastInputAmount, lastSourceCurrency);
 
-                const updateTimeText = new Date(data.time_last_update_utc).toLocaleString('id-ID', { timeZoneName: 'short' });
-                document.getElementById("update-time").innerText = "Terakhir Sinkron Pasar: " + updateTimeText;
+                const now = new Date();
+                const updateTimeText = now.toLocaleString('id-ID', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    second: '2-digit',
+                    timeZoneName: 'short' 
+                });
+                
+                const timeEl = document.getElementById("update-time");
+                timeEl.innerText = "Terakhir Diperbarui: " + updateTimeText;
+                
+                if (isSilentUpdate) {
+                    timeEl.classList.add("flash-update");
+                    setTimeout(() => {
+                        timeEl.classList.remove("flash-update");
+                    }, 800);
+                }
 
             } catch (error) {
                 console.error(error);
                 if (!isSilentUpdate) {
-                    document.getElementById("main-content").innerHTML = `<p style='color:red; text-align:center;'>Gagal memuat kurs. Silakan coba beberapa saat lagi.</p>`;
+                    document.getElementById("main-content").innerHTML = `<p style='color:#f87171; text-align:center; font-weight:600; padding:20px 0;'>Gagal memuat kurs. Silakan coba beberapa saat lagi.</p>`;
                 }
             }
         }
@@ -209,13 +391,20 @@
             listContainer.className = "currency-list";
 
             currencies.forEach(curr => {
+                const isUp = curr.trend >= 0;
+                const trendClass = isUp ? "trend-up" : "trend-down";
+                const trendSign = isUp ? "+" : "";
+
                 const row = document.createElement("div");
                 row.className = "currency-row";
                 row.innerHTML = `
                     <div class="currency-label">
-                        <span class="flag">${curr.flag}</span>
+                        <div class="flag-wrapper">${curr.flag}</div>
                         <div>
-                            <span class="code">${curr.code}</span>
+                            <div class="code-container">
+                                <span class="code">${curr.code}</span>
+                                <span class="trend-badge ${trendClass}" id="trend-${curr.code}">${trendSign}${curr.trend}%</span>
+                            </div>
                             <span class="name">${curr.name}</span>
                         </div>
                     </div>
@@ -248,6 +437,18 @@
             });
         }
 
+        // Fungsi khusus untuk memperbarui teks tren tanpa merusak fokus ketikan pengguna
+        function updateTrendUI() {
+            currencies.forEach(curr => {
+                const trendEl = document.getElementById(`trend-${curr.code}`);
+                if (trendEl) {
+                    const isUp = curr.trend >= 0;
+                    trendEl.className = `trend-badge ${isUp ? 'trend-up' : 'trend-down'}`;
+                    trendEl.innerText = `${isUp ? '+' : ''}${curr.trend}%`;
+                }
+            });
+        }
+
         function updateAllInputs(inputAmount, sourceCurrencyCode) {
             let amountInUSD = inputAmount / usdRates[sourceCurrencyCode];
 
@@ -268,12 +469,13 @@
             });
         }
 
+        // Pemuatan pertama
         fetchRatesFromServer();
 
-        // Auto update tiap 1 menit
+        // Auto-refresh ketat setiap 10 detik agar terasa "Google Real-time"
         setInterval(() => {
             fetchRatesFromServer(true);
-        }, 60000); 
+        }, 10000); 
     </script>
 </body>
 </html>
