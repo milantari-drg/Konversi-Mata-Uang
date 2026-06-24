@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Currency Monitor</title>
+    <title>Multi-Input Currency Monitor (Premium Live)</title>
     
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💱</text></svg>">
     
@@ -47,6 +47,22 @@
             padding: 24px;
             overflow-x: hidden;
             position: relative;
+            cursor: default; /* Kursor asli bawaan laptop/PC tetap aktif */
+        }
+
+        /* --- STYLING CANVAS UNTUK EFEK NEON TRAIL --- */
+        #neon-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Agar tidak mengganggu klik mouse pada input/dropdown */
+            z-index: 9999;
+        }
+
+        input, select, option, .currency-row {
+            cursor: pointer;
         }
 
         /* --- ANIMASI LATAR BELAKANG --- */
@@ -143,7 +159,6 @@
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
         }
 
-        /* Style Khusus Baris Pilihan Mata Uang Custom */
         .currency-row.custom-row {
             background: var(--bg-custom-row);
             border: 1px dashed rgba(56, 189, 248, 0.3);
@@ -167,6 +182,15 @@
             transform: translateY(-2px);
         }
 
+        .currency-row.row-flash {
+            animation: rowGlowPulse 1.2s ease-out;
+        }
+
+        @keyframes rowGlowPulse {
+            0% { border-color: var(--success); box-shadow: 0 0 20px rgba(52, 211, 153, 0.4); }
+            100% { border-color: var(--border-color); box-shadow: none; }
+        }
+
         .currency-label {
             display: flex;
             align-items: center;
@@ -176,9 +200,30 @@
         }
 
         .flag-wrapper {
-            font-size: 32px;
-            line-height: 1;
-            filter: drop-shadow(0 6px 8px rgba(0,0,0,0.3));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 28px;
+            overflow: hidden;
+            border-radius: 6px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.35);
+            transform-origin: left bottom;
+            animation: flagWave 3s infinite ease-in-out;
+        }
+
+        .flag-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        @keyframes flagWave {
+            0% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-1px) rotate(1deg); }
+            50% { transform: translateY(0) rotate(-0.5deg); }
+            75% { transform: translateY(-0.5px) rotate(0.5deg); }
+            100% { transform: translateY(0) rotate(0deg); }
         }
 
         .code-container {
@@ -187,7 +232,6 @@
             gap: 8px;
         }
 
-        /* Style Dropdown Select Modern */
         .currency-select {
             background: transparent;
             border: none;
@@ -202,7 +246,6 @@
             appearance: none;
         }
 
-        /* Ikon panah kecil untuk dropdown custom */
         .select-wrapper {
             position: relative;
             display: flex;
@@ -218,7 +261,6 @@
             pointer-events: none;
         }
 
-        /* Mengubah warna latar belakang daftar opsi dropdown di browser */
         .currency-select option {
             background-color: #1e293b;
             color: var(--text-main);
@@ -350,12 +392,15 @@
             .header-logo { font-size: 22px; }
             .currency-row { padding: 14px 16px; }
             .currency-input { font-size: 20px; }
-            .flag-wrapper { font-size: 26px; }
+            .flag-wrapper { width: 32px; height: 24px; }
             .code, .currency-select { font-size: 16px; }
+            #neon-canvas { display: none; }
         }
     </style>
 </head>
 <body>
+
+    <canvas id="neon-canvas"></canvas>
 
     <div class="container">
         <header>
@@ -363,7 +408,7 @@
                 <i class="fa-solid fa-coins header-logo"></i>
                 <h1>Currency Monitor</h1>
             </div>
-            <p class="subtitle">Live data & visual trend konversi otomatis global</p>
+            <p class="subtitle">Live Data & Visual Konversi Global</p>
         </header>
         
         <div id="main-content">
@@ -385,35 +430,35 @@
         let usdRates = {}; 
         let currentFocusCode = null; 
 
-        // 4 Mata uang utama tetap di atas
         const currencies = [
-            { code: "IDR", name: "Indonesian Rupiah", flag: "🇮🇩", symbol: "Rp" },
-            { code: "USD", name: "US Dollar", flag: "🇺🇸", symbol: "$" },
-            { code: "CNY", name: "Chinese Yuan", flag: "🇨🇳", symbol: "¥" },
-            { code: "THB", name: "Thai Baht", flag: "🇹🇭", symbol: "฿" }
+            { code: "IDR", name: "Indonesian Rupiah", iso: "id", symbol: "Rp" },
+            { code: "USD", name: "US Dollar", iso: "us", symbol: "$" },
+            { code: "CNY", name: "Chinese Yuan", iso: "cn", symbol: "¥" },
+            { code: "THB", name: "Thai Baht", iso: "th", symbol: "฿" },
+			{ code: "MYR", name: "Malaysian Ringgit", iso: "my", symbol: "RM" },
+			{ code: "SGD", name: "Singapore Dollar", iso: "sg", symbol: "S$" }
         ];
 
-        // Daftar mata uang pilihan untuk baris ke-5 (Bisa ditambah sesukamu)
         const optionalCurrencies = [
-            { code: "EUR", name: "Euro (European Union)", flag: "🇪🇺", symbol: "€" },
-            { code: "JPY", name: "Japanese Yen", flag: "🇯🇵", symbol: "¥" },
-            { code: "GBP", name: "British Pound", flag: "🇬🇧", symbol: "£" },
-            { code: "AUD", name: "Australian Dollar", flag: "🇦🇺", symbol: "A$" },
-            { code: "SGD", name: "Singapore Dollar", flag: "🇸🇬", symbol: "S$" },
-            { code: "MYR", name: "Malaysian Ringgit", flag: "🇲🇾", symbol: "RM" },
-            { code: "KRW", name: "South Korean Won", flag: "🇰🇷", symbol: "₩" },
-            { code: "SAR", name: "Saudi Arabian Riyal", flag: "🇸🇦", symbol: "SR" }
+			{ code: "JPY", name: "Japanese Yen", iso: "jp", symbol: "¥" },
+            { code: "EUR", name: "Euro (European Union)", iso: "eu", symbol: "€" },
+            { code: "GBP", name: "British Pound", iso: "gb", symbol: "£" },
+            { code: "AUD", name: "Australian Dollar", iso: "au", symbol: "A$" },
+            { code: "KRW", name: "South Korean Won", iso: "kr", symbol: "₩" },
+            { code: "SAR", name: "Saudi Arabian Riyal", iso: "sa", symbol: "SR" }
         ];
 
-        // Default mata uang custom pilihan pertama saat web dimuat
         let selectedCustomCurrency = optionalCurrencies[0]; 
 
         let lastInputAmount = 1000000;
         let lastSourceCurrency = "IDR";
 
-        // Acak tren awal
         currencies.forEach(c => c.trend = (Math.random() * 0.4 - 0.2).toFixed(2));
         optionalCurrencies.forEach(c => c.trend = (Math.random() * 0.4 - 0.2).toFixed(2));
+
+        function getFlagImgTag(isoCode) {
+            return `<img src="https://flagcdn.com/${isoCode.toLowerCase()}.svg" alt="flag" onerror="this.src='https://openmoji.org/data/color/svg/1F4B1.svg'">`;
+        }
 
         async function fetchRatesFromServer(isSilentUpdate = false) {
             try {
@@ -434,6 +479,7 @@
                     renderDashboard();
                 } else {
                     updateTrendUI();
+                    triggerUpdateFlash();
                 }
                 
                 updateAllInputs(lastInputAmount, lastSourceCurrency);
@@ -466,14 +512,14 @@
             const listContainer = document.createElement("div");
             listContainer.className = "currency-list";
 
-            // 1. Render 4 baris utama
             currencies.forEach(curr => {
                 const isUp = curr.trend >= 0;
                 const row = document.createElement("div");
                 row.className = "currency-row";
+                row.id = `row-${curr.code}`;
                 row.innerHTML = `
                     <div class="currency-label">
-                        <div class="flag-wrapper">${curr.flag}</div>
+                        <div class="flag-wrapper">${getFlagImgTag(curr.iso)}</div>
                         <div>
                             <div class="code-container">
                                 <span class="code">${curr.code}</span>
@@ -490,13 +536,13 @@
                 listContainer.appendChild(row);
             });
 
-            // 2. Render Baris ke-5 (Baris Pilihan / Custom)
             const isCustomUp = selectedCustomCurrency.trend >= 0;
             const customRow = document.createElement("div");
             customRow.className = "currency-row custom-row";
+            customRow.id = "row-CUSTOM";
             customRow.innerHTML = `
                 <div class="currency-label">
-                    <div class="flag-wrapper" id="custom-flag">${selectedCustomCurrency.flag}</div>
+                    <div class="flag-wrapper" id="custom-flag">${getFlagImgTag(selectedCustomCurrency.iso)}</div>
                     <div style="width: 100%;">
                         <div class="code-container">
                             <div class="select-wrapper">
@@ -517,7 +563,6 @@
             listContainer.appendChild(customRow);
             contentDiv.appendChild(listContainer);
 
-            // Pasang Event Listener untuk 4 Input utama
             currencies.forEach(curr => {
                 const inputEl = document.getElementById(`input-${curr.code}`);
                 inputEl.addEventListener("focus", () => currentFocusCode = curr.code);
@@ -529,7 +574,6 @@
                 });
             });
 
-            // Pasang Event Listener untuk Input Custom (Baris ke-5)
             const customInputEl = document.getElementById("input-custom");
             customInputEl.addEventListener("focus", () => currentFocusCode = "CUSTOM");
             customInputEl.addEventListener("input", function() {
@@ -539,14 +583,12 @@
                 updateAllInputs(amount, selectedCustomCurrency.code);
             });
 
-            // Event Listener waktu Dropdown Pilihan Mata Uang diubah
             const pickerEl = document.getElementById("custom-currency-picker");
             pickerEl.addEventListener("change", function() {
                 const targetCode = this.value;
                 selectedCustomCurrency = optionalCurrencies.find(c => c.code === targetCode);
                 
-                // Update tampilan teks baris custom secara instan
-                document.getElementById("custom-flag").innerText = selectedCustomCurrency.flag;
+                document.getElementById("custom-flag").innerHTML = getFlagImgTag(selectedCustomCurrency.iso);
                 document.getElementById("custom-name").innerText = selectedCustomCurrency.name;
                 document.getElementById("custom-symbol").innerText = selectedCustomCurrency.symbol;
                 
@@ -555,13 +597,11 @@
                 trendEl.className = `trend-badge ${isUp ? 'trend-up' : 'trend-down'}`;
                 trendEl.innerText = `${isUp ? '+' : ''}${selectedCustomCurrency.trend}%`;
                 
-                // Hitung ulang konversinya menggunakan data jumlah terakhir input
                 updateAllInputs(lastInputAmount, lastSourceCurrency);
             });
         }
 
         function updateTrendUI() {
-            // Update 4 bursa utama
             currencies.forEach(curr => {
                 const trendEl = document.getElementById(`trend-${curr.code}`);
                 if (trendEl) {
@@ -570,7 +610,6 @@
                     trendEl.innerText = `${isUp ? '+' : ''}${curr.trend}%`;
                 }
             });
-            // Update tren baris custom
             const customTrendEl = document.getElementById("trend-custom");
             if (customTrendEl) {
                 const isUp = selectedCustomCurrency.trend >= 0;
@@ -579,11 +618,20 @@
             }
         }
 
+        function triggerUpdateFlash() {
+            const allRows = document.querySelectorAll('.currency-row');
+            allRows.forEach(row => {
+                if (!row.contains(document.activeElement)) {
+                    row.classList.add('row-flash');
+                    setTimeout(() => row.classList.remove('row-flash'), 1200);
+                }
+            });
+        }
+
         function updateAllInputs(inputAmount, sourceCurrencyCode) {
             if (!usdRates[sourceCurrencyCode]) return;
             let amountInUSD = inputAmount / usdRates[sourceCurrencyCode];
 
-            // 1. Update 4 input utama jika tidak sedang difokuskan
             currencies.forEach(curr => {
                 if (curr.code !== currentFocusCode) {
                     const targetInput = document.getElementById(`input-${curr.code}`);
@@ -594,7 +642,6 @@
                 }
             });
 
-            // 2. Update input custom jika tidak sedang difokuskan
             if (currentFocusCode !== "CUSTOM") {
                 const customInput = document.getElementById("input-custom");
                 if (customInput) {
@@ -603,6 +650,68 @@
                 }
             }
         }
+
+        // --- SISTEM JALUR EKOR NEON MODERN (FIXED & STABIL) ---
+        const canvas = document.getElementById('neon-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Menyimpan riwayat titik koordinat pergerakan kursor
+        let trailHistory = [];
+        const maxTrailLength = 20; // Panjang ekor neon
+
+        window.addEventListener('mousemove', (e) => {
+            // Hanya menambahkan posisi baru saat mouse benar-benar bergerak
+            trailHistory.push({ x: e.clientX, y: e.clientY });
+            
+            if (trailHistory.length > maxTrailLength) {
+                trailHistory.shift();
+            }
+        });
+
+        function drawNeonTrail() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (trailHistory.length > 1) {
+                ctx.beginPath();
+                ctx.moveTo(trailHistory[0].x, trailHistory[0].y);
+
+                for (let i = 1; i < trailHistory.length; i++) {
+                    // Membuat garis kurva melengkung lembut antar titik koordinat kursor
+                    const xc = (trailHistory[i].x + trailHistory[i - 1].x) / 2;
+                    const yc = (trailHistory[i].y + trailHistory[i - 1].y) / 2;
+                    ctx.quadraticCurveTo(trailHistory[i - 1].x, trailHistory[i - 1].y, xc, yc);
+                }
+
+                // Efek Pendaran Neon Terang (Cyan Langit ke Ungu)
+                ctx.strokeStyle = '#38bdf8'; 
+                ctx.lineWidth = 4;            
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#6366f1'; 
+
+                ctx.stroke();
+                ctx.shadowBlur = 0; // Reset pendaran agar performa browser tetap enteng
+            }
+
+            // Perlahan memendekkan ekor kursor saat mouse berhenti bergerak
+            if (trailHistory.length > 0) {
+                trailHistory.shift();
+            }
+
+            requestAnimationFrame(drawNeonTrail);
+        }
+        
+        // Memulai Loop Render Animasi Neon
+        requestAnimationFrame(drawNeonTrail);
 
         fetchRatesFromServer();
         setInterval(() => fetchRatesFromServer(true), 10000); 
